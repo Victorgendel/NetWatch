@@ -2,38 +2,15 @@ ranges:
   - "203.0.113.0/24"
   - "198.51.100.0/24"
 
-ports: "3389,389,636,445,3306,5432,27017,6379,9200,1433"
+ports: "22,80,443,3389,3306,5432"
 
-masscan_rate: 15000
+masscan_rate: 10000
 masscan_workers: 8
 masscan_wait: 1
 masscan_hard_timeout: 1800
 
-nmap_workers: 12
+nmap_workers: 8
 nmap_timeout: 120
-
-alert_on:
-  ports:
-    - 22
-    - 3389
-    - 389
-    - 636
-    - 445
-    - 3306
-    - 5432
-    - 27017
-    - 6379
-    - 9200
-    - 1433
-  services:
-    - "ldap"
-    - "rdp"
-    - "mysql"
-    - "postgresql"
-    - "microsoft-sql"
-    - "mongodb"
-    - "redis"
-    - "elasticsearch"
 
 notify:
   email:

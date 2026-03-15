@@ -10,14 +10,14 @@ Day-to-day operations, testing, and troubleshooting.
 
 ```bash
 cd /opt/netwatch
-/usr/bin/python3 /opt/netwatch/netvuln_scan.py
+python3 netvuln_scan.py
 ```
 
 ### Single-host test
 
 ```bash
 cd /opt/netwatch
-./single_host_test.py --host 203.0.113.10
+python3 single_host_test.py --host 203.0.113.10
 ```
 
 > Single-host results are saved to `reports-test/` and do **not** appear in the API.
@@ -30,27 +30,17 @@ cd /opt/netwatch
 
 ```bash
 cd /opt/netwatch
-./test_mail.py
+python3 test_mail.py
 ```
 
 ### Email flow
 
-1. `netvuln_scan.py` builds an HTML + plain-text message
-2. Connects to the SMTP server
+1. `netvuln_scan.py` builds a plain-text email with scan results
+2. Connects to the SMTP server configured in `config.yaml`
 3. Issues STARTTLS
-4. Authenticates with AUTH LOGIN
-5. Sends the alert with all discovered open ports
+4. Authenticates with LOGIN
+5. Sends the alert
 6. Logs success/failure to `netwatch.log`
-
-### SMTP debugging
-
-Enable verbose SMTP output by setting in the scanner:
-
-```python
-smtp.set_debuglevel(1)
-```
-
-This shows the full SMTP conversation: EHLO → STARTTLS → AUTH → MAIL FROM → RCPT TO → DATA → Queue accepted.
 
 ---
 
@@ -91,22 +81,10 @@ systemctl status netwatch.service
 tail -f /opt/netwatch/netwatch.log
 ```
 
-### Scanner errors
-
-```bash
-tail -f /opt/netwatch/netwatch.error.log
-```
-
 ### systemd journal
 
 ```bash
 journalctl -u netwatch.service -f
-```
-
-### API log
-
-```bash
-tail -f /var/log/netwatch/webapp.log
 ```
 
 ---
@@ -125,7 +103,7 @@ tail -f /var/log/netwatch/webapp.log
 - **Naming:** `single-test-<ip>-YYYYMMDD-HHMMSS.json`
 - **Not** served by the API
 
-The API only returns files matching `netwatch-*.json`, so test results never leak into production data.
+The API only returns files matching `netwatch-*.json` from the `reports/` directory, so test results never leak into production data.
 
 ---
 
@@ -140,33 +118,28 @@ Authorization: Bearer <TOKEN>
 ### Get latest report
 
 ```bash
-curl -X POST "https://scanner.example.local/api/v1/latest" \
-  -H "Authorization: Bearer <TOKEN>" \
-  -H "Content-Type: application/json" \
-  -d '{"keep": 100}'
-```
-
-### Get latest report from today
-
-```bash
-curl -X POST "https://scanner.example.local/api/v1/latest?date=today" \
-  -H "Authorization: Bearer <TOKEN>" \
-  -H "Content-Type: application/json"
-```
-
-### List reports
-
-```bash
-curl -s "https://scanner.example.local/api/v1/scans?date=today" \
+curl -s "http://localhost:5000/api/v1/latest" \
   -H "Authorization: Bearer <TOKEN>"
 ```
 
-### Get specific report
+### Health check
 
 ```bash
-curl -s "https://scanner.example.local/api/v1/scan/netwatch-20260315-000000.json" \
-  -H "Authorization: Bearer <TOKEN>"
+curl -s "http://localhost:5000/"
 ```
+
+---
+
+## Upload Reports
+
+To upload all reports to a remote API:
+
+```bash
+cd /opt/netwatch
+python3 upload_reports.py
+```
+
+> The upload URL is configured in `upload_reports.py` — update it before use.
 
 ---
 
@@ -176,7 +149,6 @@ curl -s "https://scanner.example.local/api/v1/scan/netwatch-20260315-000000.json
 
 **Causes:**
 - `ExecStart` points to a non-existing Python path
-- Wrong venv path
 - Wrong script filename
 - Missing execute permissions
 
@@ -189,8 +161,8 @@ ls -la /usr/bin/python3
 # Verify the script exists
 ls -la /opt/netwatch/netvuln_scan.py
 
-# Use the correct ExecStart
-ExecStart=/usr/bin/python3 /opt/netwatch/netvuln_scan.py
+# Check the ExecStart line in the service file
+cat /etc/systemd/system/netwatch.service
 ```
 
 ### Timer is not running
@@ -206,24 +178,24 @@ systemctl enable --now netwatch.timer
 
 ### Email does not arrive
 
-1. Run `./test_mail.py` and check output
-2. Check SMTP debug output (enable `set_debuglevel(1)`)
+1. Run `python3 test_mail.py` and check output
+2. Verify SMTP settings in `config.yaml`
 3. Check the mail server queue
 4. Check recipient Spam / Junk folder
 5. Check mail server logs
 
 ### API returns wrong or stale report
 
-- Verify the API reads only from `reports/` (not `reports-test/`)
+- Verify the API reads from `/opt/netwatch/reports/`
 - Verify file naming matches `netwatch-*.json`
-- Check that the report directory in `web.env` is correct
+- Check that `NETWATCH_API_TOKEN` is set correctly
 
 ### masscan permission denied
 
 masscan requires root privileges:
 
 ```bash
-sudo /usr/bin/python3 /opt/netwatch/netvuln_scan.py
+sudo python3 /opt/netwatch/netvuln_scan.py
 ```
 
 Or run via the systemd service which runs as root.

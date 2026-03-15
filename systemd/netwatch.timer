@@ -1,5 +1,5 @@
 [Unit]
-Description=Run NetWatch scan daily at 00:00
+Description=Run NetWatch scan daily at midnight
 
 [Timer]
 OnCalendar=*-*-* 00:00:00

@@ -36,24 +36,33 @@ mkdir -p /etc/netwatch
 
 ## Step 3 — Copy Project Files
 
-Transfer all project files to the server:
+Clone from the repository:
+
+```bash
+git clone https://github.com/Victorgendel/NetWatch.git /tmp/netwatch-src
+cp /tmp/netwatch-src/netvuln_scan.py /opt/netwatch/
+cp /tmp/netwatch-src/single_host_test.py /opt/netwatch/
+cp /tmp/netwatch-src/test_mail.py /opt/netwatch/
+cp /tmp/netwatch-src/upload_reports.py /opt/netwatch/
+cp /tmp/netwatch-src/webapp/app.py /opt/netwatch/webapp/
+```
+
+Or transfer files manually:
 
 ```bash
 scp netvuln_scan.py single_host_test.py test_mail.py upload_reports.py root@server:/opt/netwatch/
 scp webapp/app.py root@server:/opt/netwatch/webapp/
 ```
 
-Or clone from the repository:
-
-```bash
-git clone https://github.com/Victorgendel/NetWatch.git /tmp/netwatch-src
-cp /tmp/netwatch-src/*.py /opt/netwatch/
-cp -r /tmp/netwatch-src/webapp /opt/netwatch/
-```
-
 ---
 
-## Step 4 — Create Python Virtual Environment
+## Step 4 — Install Python Dependencies
+
+```bash
+pip install requests pyyaml flask gunicorn
+```
+
+Or with a virtual environment:
 
 ```bash
 python3 -m venv /opt/netwatch-venv
@@ -68,7 +77,7 @@ python3 -m venv /opt/netwatch-venv
 Copy the example config and fill in real values:
 
 ```bash
-cp config.example.yaml /opt/netwatch/config.yaml
+cp /tmp/netwatch-src/config.example.yaml /opt/netwatch/config.yaml
 nano /opt/netwatch/config.yaml
 ```
 
@@ -89,7 +98,7 @@ nano /opt/netwatch/config.yaml
 ## Step 6 — Create systemd Service
 
 ```bash
-cp systemd/netwatch.service /etc/systemd/system/netwatch.service
+cp /tmp/netwatch-src/systemd/netwatch.service /etc/systemd/system/netwatch.service
 ```
 
 Or create manually:
@@ -104,14 +113,8 @@ Wants=network-online.target
 [Service]
 Type=simple
 WorkingDirectory=/opt/netwatch
-Environment=PYTHONUNBUFFERED=1
-User=root
-Group=root
 ExecStart=/usr/bin/python3 /opt/netwatch/netvuln_scan.py
 Restart=on-failure
-RestartSec=30s
-StandardOutput=journal
-StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
@@ -123,7 +126,7 @@ EOF
 ## Step 7 — Create systemd Timer
 
 ```bash
-cp systemd/netwatch.timer /etc/systemd/system/netwatch.timer
+cp /tmp/netwatch-src/systemd/netwatch.timer /etc/systemd/system/netwatch.timer
 ```
 
 Or create manually:
@@ -131,7 +134,7 @@ Or create manually:
 ```bash
 cat > /etc/systemd/system/netwatch.timer << 'EOF'
 [Unit]
-Description=Run NetWatch scan daily at 00:00
+Description=Run NetWatch scan daily at midnight
 
 [Timer]
 OnCalendar=*-*-* 00:00:00
@@ -159,14 +162,19 @@ systemctl list-timers --all | grep netwatch
 
 ---
 
-## Step 8 — Create API Environment File
+## Step 8 — Set API Environment Variable
+
+Set the token for the web API:
+
+```bash
+export NETWATCH_API_TOKEN="your-secret-token-here"
+```
+
+For persistence, add it to a file:
 
 ```bash
 cat > /etc/netwatch/web.env << 'EOF'
 NETWATCH_API_TOKEN="CHANGE_ME"
-NETWATCH_REPORT_DIR="/opt/netwatch/reports"
-NETWATCH_MAX_KEEP="100"
-NETWATCH_WEBLOG="/var/log/netwatch/webapp.log"
 EOF
 
 chmod 600 /etc/netwatch/web.env
@@ -177,7 +185,7 @@ chmod 600 /etc/netwatch/web.env
 ## Step 9 — Configure NGINX Reverse Proxy
 
 ```bash
-cp nginx/netwatch-web.conf /etc/nginx/sites-available/netwatch-web
+cp /tmp/netwatch-src/nginx/netwatch-web.conf /etc/nginx/sites-available/netwatch-web
 ln -s /etc/nginx/sites-available/netwatch-web /etc/nginx/sites-enabled/netwatch-web
 ```
 
@@ -200,7 +208,7 @@ certbot --nginx -d scanner.example.local
 
 ```bash
 cd /opt/netwatch
-/usr/bin/python3 /opt/netwatch/netvuln_scan.py
+python3 netvuln_scan.py
 ```
 
 Check the output:
@@ -216,32 +224,39 @@ cat /opt/netwatch/netwatch.log
 
 ```bash
 cd /opt/netwatch
-/usr/bin/python3 /opt/netwatch/test_mail.py
+python3 test_mail.py
 ```
 
 ---
 
 ## Step 12 — Test API
 
+Start the API:
+
 ```bash
-curl -X POST "https://scanner.example.local/api/v1/latest" \
-  -H "Authorization: Bearer CHANGE_ME" \
-  -H "Content-Type: application/json" \
-  -d '{"keep": 100}'
+cd /opt/netwatch
+NETWATCH_API_TOKEN="your-token" python3 webapp/app.py
+```
+
+Test it:
+
+```bash
+curl -s "http://localhost:5000/api/v1/latest" \
+  -H "Authorization: Bearer your-token"
 ```
 
 ---
 
 ## Verification Checklist
 
-- [ ] System packages installed
+- [ ] System packages installed (python3, masscan, nmap, nginx)
 - [ ] Project files in `/opt/netwatch/`
-- [ ] Python venv created and packages installed
+- [ ] Python dependencies installed
 - [ ] `config.yaml` created with real values
 - [ ] systemd service and timer enabled
 - [ ] Timer shows next run in `systemctl list-timers`
 - [ ] NGINX configured and running
-- [ ] `/etc/netwatch/web.env` created with real token
-- [ ] Manual scan produces a JSON report
+- [ ] API token set
+- [ ] Manual scan produces a JSON report in `reports/`
 - [ ] Email alert arrives
 - [ ] API responds with latest report

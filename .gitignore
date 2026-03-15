@@ -2,13 +2,5 @@ config.yaml
 *.log
 reports/
 reports-test/
-__pycache__/
-*.pyc
-*.pyo
 .env
-web.env
-*.swp
-*.swo
-*~
-.venv/
-venv/
+__pycache__/
