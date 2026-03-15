@@ -130,16 +130,18 @@ curl -s "http://localhost:5000/"
 
 ---
 
-## Upload Reports
+## Upload Reports to AbuseIPDB
 
-To upload all reports to a remote API:
+The `upload_reports.py` script sends scan reports to the [AbuseIPDB API](https://www.abuseipdb.com/) — a public database for reporting and tracking malicious IP addresses.
+
+To upload all reports:
 
 ```bash
 cd /opt/netwatch
 python3 upload_reports.py
 ```
 
-> The upload URL is configured in `upload_reports.py` — update it before use.
+> The upload URL is configured in `upload_reports.py`. Replace the MOCK URL (`api.example.local`) with the real AbuseIPDB endpoint (`https://api.abuseipdb.com/api/v2/report`) and set your API key before use.
 
 ---
 

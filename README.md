@@ -12,6 +12,7 @@ NetWatch scans configured CIDR ranges, verifies open ports with service detectio
 - **Service verification** — Nmap service/version detection (`-sV`)
 - **JSON reports** — Timestamped per-scan reports saved to disk
 - **Email alerts** — SMTP notifications with STARTTLS when open ports are found
+- **AbuseIPDB integration** — Report upload to [AbuseIPDB](https://www.abuseipdb.com/) API for IP reputation tracking
 - **Protected API** — Flask REST API with Bearer token authentication
 - **systemd automation** — Daily scheduled scans via systemd timer
 - **Production / Test separation** — `reports/` for production, `reports-test/` for single-host tests
@@ -98,19 +99,20 @@ See **[DEPLOYMENT.md](DEPLOYMENT.md)** for full server setup and **[OPERATIONS.m
 │  config.yaml │────▶│ Masscan  │────▶│  Nmap verify  │────▶│ JSON Report│
 └─────────────┘     └──────────┘     └──────────────┘     └─────┬─────┘
                                                                 │
-                                                    ┌───────────┴──────────┐
-                                                    ▼                      ▼
-                                              ┌──────────┐          ┌──────────┐
-                                              │  Email    │          │  Disk    │
-                                              │  Alert    │          │  Store   │
-                                              └──────────┘          └──────────┘
+                                              ┌─────────────────┼──────────────┐
+                                              ▼                 ▼              ▼
+                                        ┌──────────┐     ┌──────────┐   ┌────────────┐
+                                        │  Email    │     │  Disk    │   │ AbuseIPDB  │
+                                        │  Alert    │     │  Store   │   │  API       │
+                                        └──────────┘     └──────────┘   └────────────┘
 ```
 
 1. **Masscan** performs fast port discovery across all configured CIDR ranges
 2. **Nmap** verifies each discovered host with service/version detection
 3. Results are saved as a timestamped JSON report in `reports/`
 4. If open ports are found, an **email notification** is sent via SMTP
-5. The **Web API** serves the latest reports on demand
+5. Reports can be uploaded to **[AbuseIPDB](https://www.abuseipdb.com/)** for IP reputation and abuse tracking
+6. The **Web API** serves the latest reports on demand
 
 ---
 
@@ -128,6 +130,30 @@ Authorization: Bearer <TOKEN>
 | `GET` | `/` | API health check |
 
 The token is set via the `NETWATCH_API_TOKEN` environment variable.
+
+---
+
+## AbuseIPDB Integration
+
+The `upload_reports.py` script uploads scan reports to the [AbuseIPDB API](https://www.abuseipdb.com/). AbuseIPDB is a public database for reporting and checking IP addresses involved in malicious activity (scanning, brute-force, spam, etc.).
+
+**What it does:**
+- Reads completed JSON reports from `reports/`
+- Sends them via `POST` to the AbuseIPDB API endpoint
+- Tracks submission status per report
+
+**Configuration** (in `config.example.yaml`):
+
+```yaml
+api_upload:
+  enabled: false                            # Set to true to activate
+  url: "https://api.abuseipdb.com/api/v2/report"  # AbuseIPDB API endpoint
+  timeout: 25
+  verify_tls: true
+  mark_sent: true
+```
+
+> To use AbuseIPDB, [create a free account](https://www.abuseipdb.com/register) and generate an API key. Replace the MOCK URL with the real endpoint and configure your API key.
 
 ---
 

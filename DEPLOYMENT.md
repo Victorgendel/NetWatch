@@ -91,7 +91,7 @@ nano /opt/netwatch/config.yaml
 | `password` | Real SMTP password |
 | `from_addr` | Real sender email |
 | `to_addrs` | Real recipient emails |
-| `api_upload.url` | Real API endpoint (if enabled) |
+| `api_upload.url` | AbuseIPDB API endpoint (if enabled) — see [abuseipdb.com](https://www.abuseipdb.com/) |
 
 ---
 
