@@ -1,0 +1,10 @@
+[Unit]
+Description=Run NetWatch scan daily at 00:00
+
+[Timer]
+OnCalendar=*-*-* 00:00:00
+Persistent=true
+Unit=netwatch.service
+
+[Install]
+WantedBy=timers.target

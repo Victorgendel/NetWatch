@@ -1,0 +1,19 @@
+[Unit]
+Description=NetWatch full-range scan
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/netwatch
+Environment=PYTHONUNBUFFERED=1
+User=root
+Group=root
+ExecStart=/usr/bin/python3 /opt/netwatch/netvuln_scan.py
+Restart=on-failure
+RestartSec=30s
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
