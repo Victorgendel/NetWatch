@@ -6,7 +6,7 @@ from pathlib import Path
 
 REPORTS = Path("/opt/netwatch/reports")
 
-API_URL = "https://api.example.local/report"
+API_URL = "CHANGE_ME"
 
 def main():
 
